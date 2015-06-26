@@ -1,0 +1,10 @@
+{
+    "name":"jsonp-test",
+    "version":"0.0.1",
+    "dependencies":{
+        "express":"4.10.x",
+        "swig":"*",
+        "node-cmd":"*",
+        "ip":"*"
+    }
+}

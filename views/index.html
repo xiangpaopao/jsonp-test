@@ -1,0 +1,335 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
+    <title>jsonp tset</title>
+</head>
+<body>
+<h1>jsonp tset</h1>
+
+<script type="text/javascript" src="/script/zepto.js"></script>
+<!--<script type="text/javascript" src="/script/jquery-2.1.3.js"></script>-->
+<!--<script type="text/javascript" src="/script/zepto.queue.js"></script>-->
+<!--<script type="text/javascript" src="/script/zepto.ajaxQueue.js"></script>-->
+<script type="text/javascript" src="/script/zepto.jsonp.js"></script>
+<!--<script type="text/javascript" src="/script/jquery.jsonp.js"></script>-->
+
+
+
+<script type="text/javascript">
+//function jsonpPriceCallback(data){
+//    console.log('jsonpPriceCallback');
+//    console.log(data);
+//}
+/*
+* HTTP 并行 （参考HTTP权威指南）
+* 1 网速较慢时 并行多个HTTP请求时 每个请求都会去竞争有限的宽带、使得每个HTTP事务都会以比较慢的速度按比例加载
+* 2 同时打开多个HTTP会话，会消耗很多内存资源，引发性能问题，一些浏览器控制了HTTP请求的并发量，而移动端情况并不好。
+*
+* 测试方法：客户端并发100请求，服务端延迟2s响应请求
+* 结果：PC chrome 45 可以并发6个请求，iOS并发100 安卓原生（锤子、三星）并发100，
+* 移动chrome前10个请求一个一个跑，后面的6个6个跑， UC6个   QQ7个
+* */
+
+/*
+* http://segmentfault.com/q/1010000000483131
+* https://github.com/lifesinger/lifesinger.github.com/issues/118
+*
+* 腾讯的ajaxQueue库
+* http://cube.qq.com/?p=848
+* http://www.cnblogs.com/aaronjs/p/3785646.html
+* http://www.cnblogs.com/snandy/archive/2013/02/18/2892749.html
+* http://nuysoft.iteye.com/blog/1189156  jQuery Queue
+*
+* http://www.suning.com/emall/priceService_9173_000000000109820942%7C%7C%7C_5_priceServiceCallBack_.html
+* jsonp价格接口固定调用priceServiceCallBack()这个函数，不能传参改变函数名
+* 如果配置jsonpCallback则没问题
+* 暂不讨论这个接口的问题
+* 看一看主流jsonp库是怎么处理的
+* */
+
+/*
+ * 单个jsonp接口
+ */
+function singleFuc(){
+    $.ajax({
+        dataType:'jsonp',
+        jsonpCallback:'jsonpPriceCallback',
+        url: '/jsonp_api.json'
+    }).done(function(data) {
+        console.log(data)
+    })
+}
+
+/*
+* 价格接口不可加callback参数
+* 下面是个可加callback的接口
+* http://member.suning.com/webapp/wcs/stores/servlet/SNMTOrderCenterListView?storeId=10052&selectTime=all&status=A&pageNumber=1&pageSize=15&_=1435201605620&callback=jsonp3
+* */
+
+/*
+ * jQuery中的jsonp并发
+ * 如果不配jsonpCallback参数，jQuery会自己生成一些函数
+ * 如果配置jsonpCallback参数因为多个函数名相同而报错
+ * jQuery中生成 jQuery21309191792670171708_1428395574700
+ * zepto中生成 jsonp1 ...
+ */
+//内网接口
+function forFuc1(){
+    for(var i=0;i<100;i++){
+        var index;
+        $.ajax({
+            dataType:'jsonp',
+            jsonpCallback:'priceServiceCallBack',
+            //url: 'http://www.suning.com/emall/priceService_9173_000000000109820942%7C%7C%7C_5_priceServiceCallBack_.html',
+            url:'http://b2csit.cnsuning.com/emall/priceService_9173_120860973%7C%7C2%7C_5_priceServiceCallBack_.html?'+i
+
+        }).done(function(data){
+            $('body').append('jsonp done<br>');
+            //Uncaught TypeError: priceServiceCallBack is not a function
+        });
+    }
+}
+
+//
+function forFuc2(){
+    for(var i=0;i<100;i++){
+        $.ajax({
+            dataType:'jsonp',
+            jsonpCallback:'priceServiceCallBack',
+            //url: '/jsonp_api.html'
+            url: '/jsonp_api?param='+i
+        }).done(function(data){
+            $('body').append('jsonp done index: '+ data.param + '<br>');
+            //Uncaught TypeError: priceServiceCallBack is not a function
+        });
+    }
+}
+//加callback参数
+function forFuc3(){
+    for(var i=0;i<100;i++){
+        $.ajax({
+            dataType:'jsonp',
+            //url: '/jsonp_api.html'
+            url: '/jsonp_api?param='+i
+        }).done(function(data){
+            $('body').append('jsonp done index: '+ data.param + '<br>');
+            //Uncaught TypeError: priceServiceCallBack is not a function
+        });
+    }
+}
+//forFuc1()
+//forFuc2()
+/*
+ * jQuery.jsonp库的jsonp接口并发
+ * jQuery.jsonp中用的是时间戳来区分回调函数，这种方式也不够准确
+ * 在url后面增加i索引防止浏览器缓存请求
+ */
+function jsonpFuc(){
+    for(var i=0;i<100;i++){
+        $.jsonp({
+            url: '/jsonp_api?param='+i,
+            callbackParameter: "callback",
+            callback:"priceServiceCallBack"
+        }).done(function(data){
+            $('body').append('jsonp done index: '+ data.param + '<br>');
+        });
+    }
+}
+//jsonpFuc();
+/*
+ * 递归调用jsonp接口
+ */
+var reqIndex = 0;
+function newRequest(){
+    $.ajax({
+        dataType:'jsonp',
+        jsonpCallback:'priceServiceCallBack',
+        url: '/jsonp_api'
+    }).done(function(data) {
+        reqIndex++;
+        $('body').append('jsonp done index: '+ reqIndex + '<br>');
+    }).always(function(){
+        console.log(reqIndex)
+        if (reqIndex<10){
+            setTimeout(newRequest,0);
+            //TODO：为什么jQuery 中不需要用setTimeout 调用 newRequest。 而Zepto需要
+        }
+    })
+}
+
+/*
+ * ajaxQueue
+ */
+function queue(){
+    for(var i=0;i<10;i++){
+        //TODO：ajaxQueue不支持jsonp?
+        $.ajaxQueue({
+            dataType:'jsonp',
+            jsonpCallback:'jsonpPriceCallback',
+            url: '/jsonp_api.json'
+        }).done(function(data){
+            console.log(data);
+        })
+
+        $.ajaxQueue({
+            dataType:'json',
+            url: '/json_api',
+            success: function(data){
+                console.log(data);
+            }
+        })
+    }
+}
+
+/*
+* custom jsonp
+* */
+//function getJSONP(url,callback){
+//    var cbnum = 'cb' + getJSONP.counter++;
+//    var cbname = 'getJSONP.' + cbnum;
+//
+//    if(url.indexOf('?') === -1)
+//        url += '?callback=' + cbname;
+//    else
+//        url += '&callback=' + cbname;
+//
+//    var script = document.createElement('script');
+//
+//    getJSONP[cbnum] = function(response){
+//        try{
+//            callback(response);
+//        }
+//        finally{
+//            delete getJSONP[cbnum];
+//            script.parentNode.removeChild(script);
+//        }
+//    };
+//
+//    script.src = url;
+//    document.body.appendChild(script);
+//}
+//getJSONP.counter = 0;
+
+//并发jsonp请求时，若回调函数名相同，回调函数会被覆盖掉
+function getJSONP(url,callback){
+    var cbnum = 'cb' + getJSONP.counter++;
+    var cbname = 'getJSONP.'+ 'jsonpPriceCallback';
+
+    if(url.indexOf('?') === -1)
+        url += '?callback=' + cbname +'&'+cbnum;
+    else
+        url += '&callback=' + cbname +'&'+cbnum;
+
+    var script = document.createElement('script');
+
+    getJSONP['jsonpPriceCallback'] = function(response){
+        try{
+            callback(response);
+        }
+        finally{
+            //delete getJSONP[cbnum];
+            //script.parentNode.removeChild(script);
+        }
+    };
+
+    script.src = url;
+    document.body.appendChild(script);
+}
+getJSONP.counter = 0;
+
+///////////
+function customJSONP(){
+    for(var i=0;i<10;i++){
+        getJSONP( '/jsonp_api.json',function(data){
+            console.log(data);
+        })
+    }
+}
+
+//队列
+//jQuery(document).queue('myqueue',[
+//    function(){
+//        console.log('queue1');
+//    },
+//    function(){
+//        console.log('queue2');
+//    },
+//    function(){
+//        console.log('queue3');
+//    }
+//])
+//
+//jQuery(document).queue('myqueue');
+//var obj = {};
+//jQuery.queue(obj,'say',function(next){ console.log('1'); next(); });
+//jQuery.queue(obj,'say',function(next){ console.log('2');next(); });
+//jQuery.queue(obj,'say',function(){ console.log('3'); });
+//jQuery.dequeue(obj,'say');
+
+
+
+//并发100次XHR 没问题
+
+function jsonApiTest100(){
+    for(var i=0;i<100;i++){
+        $.ajax({
+            url: '/json_api'
+        }).done(function(){
+            reqIndex++;
+            $('body').append('json done index: '+ reqIndex + '<br>');
+        })
+    }
+}
+jsonApiTest100();
+
+//并发100次jsonp 丢失
+function jsonpApiTest100(){
+    for(var i=0;i<100;i++){
+        $.ajax({
+            dataType:'jsonp',
+            jsonpCallback:'jsonpPriceCallback',
+            url: '/jsonp_api?'
+        }).done(function(){
+            reqIndex++;
+            $('body').append('jsonp done index: '+ reqIndex + '<br>');
+        })
+    }
+}
+//jsonpApiTest100();
+
+function jsonpReq(){
+    $.ajax({
+        dataType:'jsonp',
+        jsonpCallback:'jsonpPriceCallback',
+        url: '/jsonp_api'
+    }).done(function(){
+        reqIndex++;
+
+        reqIndex<100 && jsonpReq()
+        $('body').append('jsonp done index: '+ reqIndex + '<br>');
+    })
+}
+
+
+
+//jsonpReq()
+
+
+//singleFuc();
+//forFuc();
+//jsonpFuc()
+//newRequest();
+//queue();
+//customJSONP()
+
+
+
+
+
+
+
+</script>
+</body>
+</html>
