@@ -15,7 +15,7 @@
 <!--<script type="text/javascript" src="/script/jquery.ajaxQueue.js"></script>-->
 <script type="text/javascript" src="/script/zepto.jsonp.js"></script>
 <!--<script type="text/javascript" src="/script/jquery.jsonp.js"></script>-->
-
+<script type="text/javascript" src="/script/ajaxQueue.js"></script>
 
 
 <script type="text/javascript">
@@ -363,23 +363,19 @@ function jqAjaxQueue(){
         });
     }
 }
-//jqAjaxQueue();
+jqAjaxQueue();
 
 
+function cubeQueue(){
+    for(var i=0;i<10;i++) {
+//        console.log(i)
+        Cube.ajaxQueue.addAjaxItem({
+            url:"/json_api?param="+i,
+            dataType:'json'}, 10);
+    }
+}
 
-
-
-//jsonpReq()
-
-
-//singleFuc();
-//forFuc();
-//jsonpFuc()
-//newRequest();
-//queue();
-//customJSONP()
-
-
+//cubeQueue();
 
 
 

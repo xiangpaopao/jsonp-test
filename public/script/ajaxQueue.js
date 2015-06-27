@@ -252,27 +252,28 @@ Ajax队列js库
 
             var options = aObj.options;
             //立即发送
-            if(aObj.priority==0)
-            {
-
-                highPriorityAjaxCount++;
-                var complete = options.complete;
-                options.complete = function(xhr,status,options){
-                    highPriorityAjaxComplete(complete,xhr,status,options);
-                };
-                Cube.ajax(options);
-            }
-            else
-            {
+            //if(aObj.priority==0)
+            //{
+            //
+            //    highPriorityAjaxCount++;
+            //    var complete = options.complete;
+            //    options.complete = function(xhr,status,options){
+            //        highPriorityAjaxComplete(complete,xhr,status,options);
+            //    };
+            //    Cube.ajax(options);
+            //}
+            //else
+            //{
                 ajaxList.push(aObj);
-            }
+            //}
+            console.log(aObj)
 
             if(highPriorityAjaxCount<=0)
             {
                 setTimeout(startSendLowPriorityAjax,100);
             }
 
-            return aObj;
+            //return aObj;
         }
         ajaxQueue.addAjaxItem = addAjaxItem;
 
@@ -308,6 +309,7 @@ Ajax队列js库
             ajaxList.sort(function(a,b){return a.priority>b.priority;});
             for(var i=0;i<ajaxList.length;i++)
             {
+                console.log('for')
                 var aObj = ajaxList[i];
                 if(aObj.status=="wait")
                 {
