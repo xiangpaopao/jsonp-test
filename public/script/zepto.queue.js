@@ -1,284 +1,390 @@
-/*
- * jQuery JSONP Core Plugin 2.4.0 (2012-08-21)
- *
- * https://github.com/jaubourg/jquery-jsonp
- *
- * Copyright (c) 2012 Julian Aubourg
- *
- * This document is licensed as free software under the terms of the
- * MIT License: http://www.opensource.org/licenses/mit-license.php
- */ (function($) {
+(function($){
 
-  // ###################### UTILITIES ##
+    // jQuery Data object
+    var rbrace = /(?:\{[\s\S]*\}|\[[\s\S]*\])$/,
+        rmultiDash = /([A-Z])/g,
+        expando = "Zepto" + ( '1.0' + Math.random() ).replace( /\D/g, ""),
+        optionsCache = {},
+        core_rnotwhite = /\S+/g,
+        core_deletedIds = [],
+        core_push = core_deletedIds.push;
 
-  // Noop
-  function noop() {}
+    function Data() {
+        // Support: Android < 4,
+        // Old WebKit does not have Object.preventExtensions/freeze method,
+        // return new empty object instead with no [[set]] accessor
+        Object.defineProperty( this.cache = {}, 0, {
+            get: function() {
+                return {};
+            }
+        });
 
-  // Generic callback
-  function genericCallback(data) {
-    lastValue = [data];
-  }
+        this.expando = expando + Math.random();
+    }
 
-  // Call if defined
-  function callIfDefined(method, object, parameters) {
-    return method && method.apply(object.context || object, parameters);
-  }
+    Data.uid = 1;
 
-  // Give joining character given url
-  function qMarkOrAmp(url) {
-    return /\?/.test(url) ? "&" : "?";
-  }
-
-  var // String constants (for better minification)
-      STR_ASYNC = "async",
-      STR_CHARSET = "charset",
-      STR_EMPTY = "",
-      STR_ERROR = "error",
-      STR_INSERT_BEFORE = "insertBefore",
-      STR_JQUERY_JSONP = "_jqjsp",
-      STR_ON = "on",
-      STR_ON_CLICK = STR_ON + "click",
-      STR_ON_ERROR = STR_ON + STR_ERROR,
-      STR_ON_LOAD = STR_ON + "load",
-      STR_ON_READY_STATE_CHANGE = STR_ON + "readystatechange",
-      STR_READY_STATE = "readyState",
-      STR_REMOVE_CHILD = "removeChild",
-      STR_SCRIPT_TAG = "<script>",
-      STR_SUCCESS = "success",
-      STR_TIMEOUT = "timeout",
-
-  // Window
-      win = window,
-  // Deferred
-      Deferred = $.Deferred,
-  // Head element
-      head = $("head")[0] || document.documentElement,
-  // Page cache
-      pageCache = {},
-  // Counter
-      count = 0,
-  // Last returned value
-      lastValue,
-
-  // ###################### DEFAULT OPTIONS ##
-      xOptionsDefaults = {
-        //beforeSend: undefined,
-        //cache: false,
-        callback: STR_JQUERY_JSONP,
-        //callbackParameter: undefined,
-        //charset: undefined,
-        //complete: undefined,
-        //context: undefined,
-        //data: "",
-        //dataFilter: undefined,
-        //error: undefined,
-        //pageCache: false,
-        //success: undefined,
-        //timeout: 0,
-        //traditional: false,
-        url: location.href
-      },
-
-  // opera demands sniffing :/
-      opera = win.opera,
-
-  // IE < 10
-      oldIE = !! $("<div>").html("<!--[if IE]><i><![endif]-->").find("i").length;
-
-  // ###################### MAIN FUNCTION ##
-  function jsonp(xOptions) {
-
-    // Build data with default
-    xOptions = $.extend({}, xOptionsDefaults, xOptions);
-
-    // References to xOptions members (for better minification)
-    var successCallback = xOptions.success,
-        errorCallback = xOptions.error,
-        completeCallback = xOptions.complete,
-        dataFilter = xOptions.dataFilter,
-        callbackParameter = xOptions.callbackParameter,
-        successCallbackName = xOptions.callback,
-        cacheFlag = xOptions.cache,
-        pageCacheFlag = xOptions.pageCache,
-        charset = xOptions.charset,
-        url = xOptions.url,
-        data = xOptions.data,
-        timeout = xOptions.timeout,
-        pageCached,
-
-    // Abort/done flag
-        done = 0,
-
-    // Life-cycle functions
-        cleanUp = noop,
-
-    // Support vars
-        supportOnload,
-        supportOnreadystatechange,
-
-    // Request execution vars
-        firstChild,
-        script,
-        scriptAfter,
-        timeoutTimer;
-
-    // If we have Deferreds:
-    // - substitute callbacks
-    // - promote xOptions to a promise
-    Deferred && Deferred(function(defer) {
-      defer.done(successCallback).fail(errorCallback);
-      successCallback = defer.resolve;
-      errorCallback = defer.reject;
-    }).promise(xOptions);
-
-    // Create the abort method
-    xOptions.abort = function() {
-      !(done++) && cleanUp();
+    Data.accepts = function( owner ) {
+        // Accepts only:
+        //  - Node
+        //    - Node.ELEMENT_NODE
+        //    - Node.DOCUMENT_NODE
+        //  - Object
+        //    - Any
+        return owner.nodeType ?
+        owner.nodeType === 1 || owner.nodeType === 9 : true;
     };
 
-    // Call beforeSend if provided (early abort if false returned)
-    if (callIfDefined(xOptions.beforeSend, xOptions, [xOptions]) === !1 || done) {
-      return xOptions;
-    }
+    Data.prototype = {
+        key: function( owner ) {
+            // We can accept data for non-element nodes in modern browsers,
+            // but we should not, see #8335.
+            // Always return the key for a frozen object.
+            if ( !Data.accepts( owner ) ) {
+                return 0;
+            }
 
-    // Control entries
-    url = url || STR_EMPTY;
-    data = data ? ((typeof data) == "string" ? data : $.param(data, xOptions.traditional)) : STR_EMPTY;
+            var descriptor = {},
+            // Check if the owner object already has a cache key
+                unlock = owner[ this.expando ];
 
-    // Build final url
-    url += data ? (qMarkOrAmp(url) + data) : STR_EMPTY;
+            // If not, create one
+            if ( !unlock ) {
+                unlock = Data.uid++;
 
-    // Add callback parameter if provided as option
-    callbackParameter && (url += qMarkOrAmp(url) + encodeURIComponent(callbackParameter) + "=?");
+                // Secure it in a non-enumerable, non-writable property
+                try {
+                    descriptor[ this.expando ] = { value: unlock };
+                    Object.defineProperties( owner, descriptor );
 
-    // Add anticache parameter if needed
-    !cacheFlag && !pageCacheFlag && (url += qMarkOrAmp(url) + "_" + (new Date()).getTime() + "=");
+                    // Support: Android < 4
+                    // Fallback to a less secure definition
+                } catch ( e ) {
+                    descriptor[ this.expando ] = unlock;
+                    $.extend( owner, descriptor );
+                }
+            }
 
-    // Replace last ? by callback parameter
-    url = url.replace(/=\?(&|$)/, "=" + successCallbackName + "$1");
+            // Ensure the cache object
+            if ( !this.cache[ unlock ] ) {
+                this.cache[ unlock ] = {};
+            }
 
-    // Success notifier
-    function notifySuccess(json) {
+            return unlock;
+        },
+        set: function( owner, data, value ) {
+            var prop,
+            // There may be an unlock assigned to this node,
+            // if there is no entry for this "owner", create one inline
+            // and set the unlock as though an owner entry had always existed
+                unlock = this.key( owner ),
+                cache = this.cache[ unlock ];
 
-      if (!(done++)) {
+            // Handle: [ owner, key, value ] args
+            if ( typeof data === "string" ) {
+                cache[ data ] = value;
+//console.log(value)
+                // Handle: [ owner, { properties } ] args
+            } else {
+                // Fresh assignments by object are shallow copied
+                if ( $.isEmptyObject( cache ) ) {
+                    $.extend( this.cache[ unlock ], data );
+                    // Otherwise, copy the properties one-by-one to the cache object
+                } else {
+                    for ( prop in data ) {
+                        cache[ prop ] = data[ prop ];
+                    }
+                }
+            }
+            return cache;
+        },
+        get: function( owner, key ) {
+            // Either a valid cache is found, or will be created.
+            // New caches will be created and the unlock returned,
+            // allowing direct access to the newly created
+            // empty data object. A valid owner object must be provided.
+            var cache = this.cache[ this.key( owner ) ];
 
-        cleanUp();
-        // Pagecache if needed
-        pageCacheFlag && (pageCache[url] = {
-          s: [json]
-        });
-        // Apply the data filter if provided
-        dataFilter && (json = dataFilter.apply(xOptions, [json]));
-        // Call success then complete
-        callIfDefined(successCallback, xOptions, [json, STR_SUCCESS, xOptions]);
-        callIfDefined(completeCallback, xOptions, [xOptions, STR_SUCCESS]);
+            return key === undefined ?
+                cache : cache[ key ];
+        },
+        access: function( owner, key, value ) {
+            //debugger
+            var stored;
+            // In cases where either:
+            //
+            //   1. No key was specified
+            //   2. A string key was specified, but no value provided
+            //
+            // Take the "read" path and allow the get method to determine
+            // which value to return, respectively either:
+            //
+            //   1. The entire cache object
+            //   2. The data stored at the key
+            //
+            if ( key === undefined ||
+                ((key && typeof key === "string") && value === undefined) ) {
 
-      }
-    }
+                stored = this.get( owner, key );
 
-    // Error notifier
-    function notifyError(type) {
+                return stored !== undefined ?
+                    stored : this.get( owner, $.camelCase(key) );
+            }
 
-      if (!(done++)) {
+            // [*]When the key is not a string, or both a key and value
+            // are specified, set or extend (existing objects) with either:
+            //
+            //   1. An object of properties
+            //   2. A key and value
+            //
+            //debugger
+            this.set( owner, key, value );
 
-        // Clean up
-        cleanUp();
-        // If pure error (not timeout), cache if needed
-        pageCacheFlag && type != STR_TIMEOUT && (pageCache[url] = type);
-        // Call error then complete
-        callIfDefined(errorCallback, xOptions, [xOptions, type]);
-        callIfDefined(completeCallback, xOptions, [xOptions, type]);
+            // Since the "set" path can have two possible entry points
+            // return the expected data based on which path was taken[*]
+            //return value !== undefined ? value : key;
+            return value;
+        },
+        remove: function( owner, key ) {
+            var i, name, camel,
+                unlock = this.key( owner ),
+                cache = this.cache[ unlock ];
 
-      }
-    }
+            if ( key === undefined ) {
+                this.cache[ unlock ] = {};
 
-    // Check page cache
-    if (pageCacheFlag && (pageCached = pageCache[url])) {
+            } else {
+                // Support array or space separated string of keys
+                if ( $.isArray( key ) ) {
+                    // If "name" is an array of keys...
+                    // When data is initially created, via ("key", "val") signature,
+                    // keys will be converted to camelCase.
+                    // Since there is no way to tell _how_ a key was added, remove
+                    // both plain key and camelCase key. #12786
+                    // This will only penalize the array argument path.
+                    name = key.concat( key.map( $.camelCase ) );
+                } else {
+                    camel = $.camelCase( key );
+                    // Try the string as a key before any manipulation
+                    if ( key in cache ) {
+                        name = [ key, camel ];
+                    } else {
+                        // If a key with the spaces exists, use it.
+                        // Otherwise, create an array by matching non-whitespace
+                        name = camel;
+                        name = name in cache ?
+                            [ name ] : ( name.match( core_rnotwhite ) || [] );
+                    }
+                }
 
-      pageCached.s ? notifySuccess(pageCached.s[0]) : notifyError(pageCached);
-
-    } else {
-
-      // Install the generic callback
-      // (BEWARE: global namespace pollution ahoy)
-      win[successCallbackName] = genericCallback;
-
-      // Create the script tag
-      script = $(STR_SCRIPT_TAG)[0];
-      script.id = STR_JQUERY_JSONP + count++;
-
-      // Set charset if provided
-      if (charset) {
-        script[STR_CHARSET] = charset;
-      }
-
-      opera && opera.version() < 11.60 ?
-        // onerror is not supported: do not set as async and assume in-order execution.
-        // Add a trailing script to emulate the event
-          ((scriptAfter = $(STR_SCRIPT_TAG)[0]).text = "document.getElementById('" + script.id + "')." + STR_ON_ERROR + "()") :
-        // onerror is supported: set the script as async to avoid requests blocking each others
-          (script[STR_ASYNC] = STR_ASYNC)
-
-      ;
-
-      // Internet Explorer: event/htmlFor trick
-      if (oldIE) {
-        script.htmlFor = script.id;
-        script.event = STR_ON_CLICK;
-      }
-
-      // Attached event handlers
-      script[STR_ON_LOAD] = script[STR_ON_ERROR] = script[STR_ON_READY_STATE_CHANGE] = function(result) {
-
-        // Test readyState if it exists
-        if (!script[STR_READY_STATE] || !/i/.test(script[STR_READY_STATE])) {
-
-          try {
-
-            script[STR_ON_CLICK] && script[STR_ON_CLICK]();
-
-          } catch (_) {}
-
-          result = lastValue;
-          lastValue = 0;
-          result ? notifySuccess(result[0]) : notifyError(STR_ERROR);
-
+                i = name.length;
+                while ( i-- ) {
+                    delete cache[ name[ i ] ];
+                }
+            }
         }
-      };
+        //hasData: function( owner ) {
+        //    return !$.isEmptyObject(
+        //        this.cache[ owner[ this.expando ] ] || {}
+        //    );
+        //},
+        //discard: function( owner ) {
+        //    if ( owner[ this.expando ] ) {
+        //        delete this.cache[ owner[ this.expando ] ];
+        //    }
+        //}
+    };
 
-      // Set source
-      script.src = url;
+    var data_priv = new Data();
 
-      // Re-declare cleanUp function
-      cleanUp = function(i) {
-        timeoutTimer && clearTimeout(timeoutTimer);
-        script[STR_ON_READY_STATE_CHANGE] = script[STR_ON_LOAD] = script[STR_ON_ERROR] = null;
-        head[STR_REMOVE_CHILD](script);
-        scriptAfter && head[STR_REMOVE_CHILD](scriptAfter);
-      };
+    $.extend($, {
+        queue: function( elem, type, data ) {
+            //debugger
+            var queue;
 
-      // Append main script
-      head[STR_INSERT_BEFORE](script, (firstChild = head.firstChild));
+            if ( elem ) {
+                type = ( type || "fx" ) + "queue";
+                queue = data_priv.get( elem, type );
+                //console.log(queue)
 
-      // Append trailing script if needed
-      scriptAfter && head[STR_INSERT_BEFORE](scriptAfter, firstChild);
+                // Speed up dequeue by getting out quickly if this is just a lookup
+                if ( data ) {
+                    if ( !queue || $.isArray( data ) ) {
+                        queue = data_priv.access( elem, type, $.makeArray(data) );
+                        //console.log(queue)
+                    } else {
+                        queue.push( data );
+                    }
+                }
+                return queue || [];
+            }
+        },
 
-      // If a timeout is needed, install it
-      timeoutTimer = timeout > 0 && setTimeout(function() {
-        notifyError(STR_TIMEOUT);
-      }, timeout);
+        dequeue: function( elem, type ) {
+            type = type || "fx";
 
-    }
+            var queue = $.queue( elem, type ),
+                startLength = queue.length,
+                fn = queue.shift(),
+                hooks = $._queueHooks( elem, type ),
+                next = function() {
+                    $.dequeue( elem, type );
+                };
 
-    return xOptions;
-  }
+            // If the fx queue is dequeued, always remove the progress sentinel
+            if ( fn === "inprogress" ) {
+                fn = queue.shift();
+                startLength--;
+            }
 
-  // ###################### SETUP FUNCTION ##
-  jsonp.setup = function(xOptions) {
-    $.extend(xOptionsDefaults, xOptions);
-  };
+            if ( fn ) {
 
-  // ###################### INSTALL in jQuery ##
-  $.jsonp = jsonp;
+                // Add a progress sentinel to prevent the fx queue from being
+                // automatically dequeued
+                if ( type === "fx" ) {
+                    queue.unshift( "inprogress" );
+                }
 
-})(Zepto);
+                // clear up the last queue stop function
+                delete hooks.stop;
+                fn.call( elem, next, hooks );
+            }
+
+            if ( !startLength && hooks ) {
+                hooks.empty.fire();
+            }
+        },
+
+        // not intended for public consumption - generates a queueHooks object, or returns the current one
+        _queueHooks: function( elem, type ) {
+            var key = type + "queueHooks";
+            return data_priv.get( elem, key ) || data_priv.access( elem, key, {
+
+                    empty: $.Callbacks("once memory").add(function() {
+
+                        data_priv.remove( elem, [ type + "queue", key ] );
+                    })
+                });
+        },
+
+        //// array operations
+        makeArray: function( arr, results ) {
+            var ret = results || [];
+
+            if ( arr != null ) {
+                if ($.isArray( Object(arr) ) ) {
+                    $.merge( ret,
+                        typeof arr === "string" ?
+                            [ arr ] : arr
+                    );
+                } else {
+                    core_push.call( ret, arr );
+                }
+            }
+
+            return ret;
+        }
+        //merge: function( first, second ) {
+        //    var l = second.length,
+        //        i = first.length,
+        //        j = 0;
+        //
+        //    if ( typeof l === "number" ) {
+        //        for ( ; j < l; j++ ) {
+        //            first[ i++ ] = second[ j ];
+        //        }
+        //    } else {
+        //        while ( second[j] !== undefined ) {
+        //            first[ i++ ] = second[ j++ ];
+        //        }
+        //    }
+        //
+        //    first.length = i;
+        //
+        //    return first;
+        //}
+    });
+
+    $.extend($.fn, {
+        queue: function( type, data ) {
+            var setter = 2;
+
+            if ( typeof type !== "string" ) {
+                data = type;
+                type = "fx";
+                setter--;
+            }
+
+            if ( arguments.length < setter ) {
+                return $.queue( this[0], type );
+            }
+
+
+
+            return data === undefined ?
+                this :
+                this.each(function() {
+                    var queue = $.queue( this, type, data );
+
+                    // ensure a hooks for this queue
+                    //$._queueHooks( this, type );
+                    if ( type === "fx" && queue[0] !== "inprogress" ) {
+                        //debugger
+                        $.dequeue( this, type );
+                    }
+                });
+        }
+        //dequeue: function( type ) {
+        //    return this.each(function() {
+        //        $.dequeue( this, type );
+        //    });
+        //},
+        //// Based off of the plugin by Clint Helfers, with permission.
+        //// http://blindsignals.com/index.php/2009/07/jquery-delay/
+        //delay: function( time, type ) {
+        //    time = $.fx ? $.fx.speeds[ time ] || time : time;
+        //    type = type || "fx";
+        //
+        //    return this.queue( type, function( next, hooks ) {
+        //        var timeout = setTimeout( next, time );
+        //        hooks.stop = function() {
+        //            clearTimeout( timeout );
+        //        };
+        //    });
+        //},
+        //clearQueue: function( type ) {
+        //    return this.queue( type || "fx", [] );
+        //},
+        // Get a promise resolved when queues of a certain type
+        // are emptied (fx is the type by default)
+        //promise: function( type, obj ) {
+        //    var tmp,
+        //        count = 1,
+        //        defer = $.Deferred(),
+        //        elements = this,
+        //        i = this.length,
+        //        resolve = function() {
+        //            if ( !( --count ) ) {
+        //                defer.resolveWith( elements, [ elements ] );
+        //            }
+        //        };
+        //
+        //    if ( typeof type !== "string" ) {
+        //        obj = type;
+        //        type = undefined;
+        //    }
+        //    type = type || "fx";
+        //
+        //    while( i-- ) {
+        //        tmp = data_priv.get( elements[ i ], type + "queueHooks" );
+        //        if ( tmp && tmp.empty ) {
+        //            count++;
+        //            tmp.empty.add( resolve );
+        //        }
+        //    }
+        //    resolve();
+        //    return defer.promise( obj );
+        //}
+    });
+
+}(Zepto));

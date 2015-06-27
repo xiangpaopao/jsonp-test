@@ -6,29 +6,40 @@
     <title>jsonp tset</title>
 </head>
 <body>
-<h1>jsonp tset</h1>
+<h4>jsonp tset</h4>
 
 <script type="text/javascript" src="/script/zepto.js"></script>
 <!--<script type="text/javascript" src="/script/jquery-2.1.3.js"></script>-->
-<!--<script type="text/javascript" src="/script/zepto.queue.js"></script>-->
-<!--<script type="text/javascript" src="/script/zepto.ajaxQueue.js"></script>-->
+<script type="text/javascript" src="/script/zepto.queue.js"></script>
+<script type="text/javascript" src="/script/zepto.ajaxQueue.js"></script>
+<!--<script type="text/javascript" src="/script/jquery.ajaxQueue.js"></script>-->
 <script type="text/javascript" src="/script/zepto.jsonp.js"></script>
 <!--<script type="text/javascript" src="/script/jquery.jsonp.js"></script>-->
 
 
 
 <script type="text/javascript">
+//TODO:合并zepto.ajaxQueue 与zepto.queue模块
+//TODO:解析jQuery.jsonp源码
 //function jsonpPriceCallback(data){
 //    console.log('jsonpPriceCallback');
 //    console.log(data);
 //}
 /*
+* 提纲
+* iscroll
+* 样式
+* UC QQ拦截请求
+* */
+/*
 * HTTP 并行 （参考HTTP权威指南）
 * 1 网速较慢时 并行多个HTTP请求时 每个请求都会去竞争有限的宽带、使得每个HTTP事务都会以比较慢的速度按比例加载
 * 2 同时打开多个HTTP会话，会消耗很多内存资源，引发性能问题，一些浏览器控制了HTTP请求的并发量，而移动端情况并不好。
 *
+* **浏览器的并发请求数目限制是针对同一域名的
+* **浏览器请求数表 http://www.browserscope.org/?category=network&v=top
 * 测试方法：客户端并发100请求，服务端延迟2s响应请求
-* 结果：PC chrome 45 可以并发6个请求，iOS并发100 安卓原生（锤子、三星）并发100，
+* 结果：PC chrome 45 可以并发6个请求(IE6 2个 IE10 8个)，iP5 6个  iP4  三星？
 * 移动chrome前10个请求一个一个跑，后面的6个6个跑， UC6个   QQ7个
 * */
 
@@ -48,6 +59,46 @@
 * 暂不讨论这个接口的问题
 * 看一看主流jsonp库是怎么处理的
 * */
+
+
+
+//并发请求数测试
+
+//并发100次XHR 没问题
+
+function jsonApiTest100(){
+    for(var i=0;i<100;i++){
+        $.ajax({
+            url: '/json_api?i='+i,
+            beforeSend:function(){
+                //$('body').append('json send : '+ i + '<br>');
+            }
+        }).done(function(){
+            reqIndex++;
+            $('body').append('json done index: '+ reqIndex + '<br>');
+        })
+    }
+}
+//jsonApiTest100();
+
+//并发100次jsonp 丢失
+function jsonpApiTest100(){
+    for(var i=0;i<100;i++){
+        $.ajax({
+            dataType:'jsonp',
+            url: '/jsonp_api?i=',
+            beforeSend:function(){
+                //$('body').append('json send : '+ i + '<br>');
+            }
+        }).done(function(){
+            reqIndex++;
+            $('body').append('jsonp done index: '+ reqIndex + '<br>');
+        })
+    }
+}
+//jsonpApiTest100();
+
+
 
 /*
  * 单个jsonp接口
@@ -129,7 +180,9 @@ function forFuc3(){
 function jsonpFuc(){
     for(var i=0;i<100;i++){
         $.jsonp({
-            url: '/jsonp_api?param='+i,
+            //url:'http://b2csit.cnsuning.com/emall/priceService_9173_120860973%7C%7C2%7C_5_priceServiceCallBack_.html?'+i,
+            url:'/jsonp_api?param='+i,
+            //url:'/jsonp_api.html?param='+i,
             callbackParameter: "callback",
             callback:"priceServiceCallBack"
         }).done(function(data){
@@ -269,23 +322,8 @@ function customJSONP(){
 //jQuery.dequeue(obj,'say');
 
 
-
-//并发100次XHR 没问题
-
-function jsonApiTest100(){
-    for(var i=0;i<100;i++){
-        $.ajax({
-            url: '/json_api'
-        }).done(function(){
-            reqIndex++;
-            $('body').append('json done index: '+ reqIndex + '<br>');
-        })
-    }
-}
-jsonApiTest100();
-
 //并发100次jsonp 丢失
-function jsonpApiTest100(){
+function jsonp100(){
     for(var i=0;i<100;i++){
         $.ajax({
             dataType:'jsonp',
@@ -297,7 +335,7 @@ function jsonpApiTest100(){
         })
     }
 }
-//jsonpApiTest100();
+
 
 function jsonpReq(){
     $.ajax({
@@ -311,6 +349,23 @@ function jsonpReq(){
         $('body').append('jsonp done index: '+ reqIndex + '<br>');
     })
 }
+
+//jQuery Ajax Queue
+function jqAjaxQueue(){
+    for(var i=0;i<10;i++) {
+//        console.log(i)
+        $.ajaxQueue({
+            url: "/json_api?param="+i,
+            dataType:'json',
+            jsonpCallback:'jsonpPriceCallback'
+        }).done(function (data) {
+            $('body').append('jsonp done index: ' + data.param + '<br>');
+        });
+    }
+}
+//jqAjaxQueue();
+
+
 
 
 

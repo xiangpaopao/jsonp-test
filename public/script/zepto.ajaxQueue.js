@@ -5,6 +5,7 @@
 
 // jQuery on an empty object, we are going to use this as our Queue
 var ajaxQueue = $({});
+var Q = [];
 
 $.ajaxQueue = function( ajaxOpts ) {
     var jqXHR,
@@ -21,27 +22,31 @@ $.ajaxQueue = function( ajaxOpts ) {
 
     // queue our ajax request
     ajaxQueue.queue( doRequest );
+    //Q.push(doRequest);
+    //debugger
+    //var req = Q[0];
+//req;
+    //console.log(ajaxQueue.queue())
 
     // add the abort method
-    promise.abort = function( statusText ) {
-
-        // proxy abort to the jqXHR if it is active
-        if ( jqXHR ) {
-            return jqXHR.abort( statusText );
-        }
-
-        // if there wasn't already a jqXHR we need to remove from queue
-        var queue = ajaxQueue.queue(),
-            index = $.inArray( doRequest, queue );
-
-        if ( index > -1 ) {
-            queue.splice( index, 1 );
-        }
-
-        // and then reject the deferred
-        dfd.rejectWith( ajaxOpts.context || ajaxOpts, [ promise, statusText, "" ] );
-        return promise;
-    };
+    //promise.abort = function( statusText ) {
+    //
+    //    // proxy abort to the jqXHR if it is active
+    //    if ( jqXHR ) {
+    //        return jqXHR.abort( statusText );
+    //    }
+    //
+    //    // if there wasn't already a jqXHR we need to remove from queue
+    //    var queue = ajaxQueue.queue(),
+    //        index = $.inArray( doRequest, queue );
+    //    if ( index > -1 ) {
+    //        queue.splice( index, 1 );
+    //    }
+    //
+    //    // and then reject the deferred
+    //    dfd.rejectWith( ajaxOpts.context || ajaxOpts, [ promise, statusText, "" ] );
+    //    return promise;
+    //};
 
     return promise;
 };
