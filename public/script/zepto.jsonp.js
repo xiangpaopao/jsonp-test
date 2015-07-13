@@ -139,13 +139,13 @@
 		};
 
 		// Call beforeSend if provided (early abort if false returned)
-		if ( callIfDefined( xOptions.beforeSend , xOptions , [ xOptions ] ) === !1 || done ) {
-			return xOptions;
-		}
+		//if ( callIfDefined( xOptions.beforeSend , xOptions , [ xOptions ] ) === !1 || done ) {
+		//	return xOptions;
+		//}
 
 		// Control entries
 		url = url || STR_EMPTY;
-		data = data ? ( (typeof data) == "string" ? data : $.param( data , xOptions.traditional ) ) : STR_EMPTY;
+		//data = data ? ( (typeof data) == "string" ? data : $.param( data , xOptions.traditional ) ) : STR_EMPTY;
 
 		// Build final url
 		url += data ? ( qMarkOrAmp( url ) + data ) : STR_EMPTY;
@@ -155,7 +155,7 @@
 
 		// Add anticache parameter if needed
 		//��ʱ����������
-		!cacheFlag && !pageCacheFlag && ( url += qMarkOrAmp( url ) + "_" + ( new Date() ).getTime() + "=" );
+		//!cacheFlag && !pageCacheFlag && ( url += qMarkOrAmp( url ) + "_" + ( new Date() ).getTime() + "=" );
 		//!cacheFlag && !pageCacheFlag && ( url += qMarkOrAmp( url ) + "=" );
 
 		// Replace last ? by callback parameter
@@ -166,7 +166,7 @@
 			//console.log('notifySuccess',pageCacheFlag,pageCache [ url ]);
 
 			if ( !( done++ ) ) {
-				cleanUp();
+				//cleanUp();
 				// Pagecache if needed
 				pageCacheFlag && ( pageCache [ url ] = { s: [ json ] } );
 				// Apply the data filter if provided
@@ -179,31 +179,33 @@
 		}
 
 		// Error notifier
-		function notifyError( type ) {
-			console.log('notifyError');
-			if ( !( done++ ) ) {
-
-				// Clean up
-				cleanUp();
-				// If pure error (not timeout), cache if needed
-				pageCacheFlag && type != STR_TIMEOUT && ( pageCache[ url ] = type );
-				// Call error then complete
-				callIfDefined( errorCallback , xOptions , [ xOptions , type ] );
-				callIfDefined( completeCallback , xOptions , [ xOptions , type ] );
-
-			}
-		}
+		//function notifyError( type ) {
+		//	console.log('notifyError');
+		//	if ( !( done++ ) ) {
+        //
+		//		// Clean up
+		//		cleanUp();
+		//		// If pure error (not timeout), cache if needed
+		//		pageCacheFlag && type != STR_TIMEOUT && ( pageCache[ url ] = type );
+		//		// Call error then complete
+		//		callIfDefined( errorCallback , xOptions , [ xOptions , type ] );
+		//		callIfDefined( completeCallback , xOptions , [ xOptions , type ] );
+        //
+		//	}
+		//}
 		//console.log('pageCached',pageCached)
 		// Check page cache
-		if ( pageCacheFlag && ( pageCached = pageCache[ url ] ) ) {
-
-			pageCached.s ? notifySuccess( pageCached.s[ 0 ] ) : notifyError( pageCached );
-
-		} else {
+		//if ( pageCacheFlag && ( pageCached = pageCache[ url ] ) ) {
+        //
+		//	pageCached.s ? notifySuccess( pageCached.s[ 0 ] ) : notifyError( pageCached );
+        //
+		//} else {
 
 			// Install the generic callback
 			// (BEWARE: global namespace pollution ahoy)
 			win[ successCallbackName ] = genericCallback;
+
+			//console.log(genericCallback);
 
 			// Create the script tag
 			script = $( STR_SCRIPT_TAG )[ 0 ];
@@ -253,14 +255,14 @@
 			script.src = url;
 
 			// Re-declare cleanUp function
-			cleanUp = function( i ) {
-				//console.log('timeout:',timeoutTimer)
-				timeoutTimer && clearTimeout( timeoutTimer );
-				script[ STR_ON_READY_STATE_CHANGE ] = script[ STR_ON_LOAD ] = script[ STR_ON_ERROR ] = null;
-				//�Ƴ�script tag
-				//head[ STR_REMOVE_CHILD ]( script );
-				scriptAfter && head[ STR_REMOVE_CHILD ]( scriptAfter );
-			};
+			//cleanUp = function( i ) {
+			//	//console.log('timeout:',timeoutTimer)
+			//	timeoutTimer && clearTimeout( timeoutTimer );
+			//	script[ STR_ON_READY_STATE_CHANGE ] = script[ STR_ON_LOAD ] = script[ STR_ON_ERROR ] = null;
+			//	//�Ƴ�script tag
+			//	//head[ STR_REMOVE_CHILD ]( script );
+			//	scriptAfter && head[ STR_REMOVE_CHILD ]( scriptAfter );
+			//};
 
 			// Append main script
 			head[ STR_INSERT_BEFORE ]( script , ( firstChild = head.firstChild ) );
@@ -274,7 +276,7 @@
 				notifyError( STR_TIMEOUT );
 			} , timeout );
 
-		}
+		//}
 
 		return xOptions;
 	}

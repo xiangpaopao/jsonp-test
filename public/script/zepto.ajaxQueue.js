@@ -9,9 +9,9 @@ var ajaxList = [];
 var queueStatus = "";
 
 
-    var jqXHR,
-        dfd = $.Deferred(),
-        promise = dfd.promise();
+    //var jqXHR,
+    //    dfd = $.Deferred(),
+    //    promise = dfd.promise();
 
 $.ajaxQueue = function( ajaxOpts ) {
 //
@@ -22,9 +22,16 @@ $.ajaxQueue = function( ajaxOpts ) {
 
     ajaxList.push(ajaxItem);
 
+    var dfd = $.Deferred();
+    var promise = dfd.promise();
+
     var ajax = ajaxList[0];
     if (ajax.status != 'pending'){
-        sendAjax()
+        //sendAjax()
+        //dfd.then(fu)
+        //promise = sendAjax();
+        sendAjax();
+
     }
 
 
@@ -37,34 +44,8 @@ $.ajaxQueue = function( ajaxOpts ) {
 
 
     function sendAjax(){
-        //for(var i=0;i<ajaxList.length;i++)
-        //{
-        //    var ajax = ajaxList[i];
-        //    console.log(ajaxList);
-        //    //if(ajax.status!="wait")
-        //    //{
-        //    //    ajaxList.splice(i,1);
-        //    //    i--;
-        //    //
-        //    //}
-        //    if(ajax.status == 'sending'){
-        //        ajaxList.splice(i,1);
-        //        i--;
-        //        return;
-        //    }
-        //
-        //    //if()
-        //
-        //    if(ajax.status == 'wait'){
-        //        ajax.status = 'sending';
-        //        $.ajax( ajax.options)
-        //            //.done(sendAjax);
-        //        console.log(i)
-        //        break;
-        //    }
-        //
-        //
-        //}
+
+
         var ajax = ajaxList[0];
         ajax.status = 'pending';
         $.ajax( ajax.options)
@@ -74,6 +55,7 @@ $.ajaxQueue = function( ajaxOpts ) {
                 ajaxList.shift();
                 if(ajaxList.length>0)sendAjax();
             });
+       // return dfd.promise();
     }
 
     // run the actual query

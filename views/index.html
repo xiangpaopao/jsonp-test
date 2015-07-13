@@ -30,6 +30,7 @@
 * iscroll
 * 样式
 * UC QQ拦截请求
+*
 * */
 /*
 * HTTP 并行 （参考HTTP权威指南）
@@ -190,7 +191,7 @@ function jsonpFuc(){
         });
     }
 }
-//jsonpFuc();
+jsonpFuc()
 /*
  * 递归调用jsonp接口
  */
@@ -239,18 +240,46 @@ function queue(){
 /*
 * custom jsonp
 * */
+function getJSONP(url,callback){
+    var cbnum = 'cb' + getJSONP.counter++;
+    var cbname = 'getJSONP.' + cbnum;
+
+    if(url.indexOf('?') === -1)
+        url += '?callback=' + cbname;
+    else
+        url += '&callback=' + cbname;
+
+    var script = document.createElement('script');
+
+    getJSONP[cbnum] = function(response){
+        try{
+            callback(response);
+        }
+        finally{
+            delete getJSONP[cbnum];
+            script.parentNode.removeChild(script);
+        }
+    };
+
+    script.src = url;
+    document.body.appendChild(script);
+}
+
+getJSONP.counter = 0;
+
+//并发jsonp请求时，若回调函数名相同，回调函数会被覆盖掉
 //function getJSONP(url,callback){
 //    var cbnum = 'cb' + getJSONP.counter++;
-//    var cbname = 'getJSONP.' + cbnum;
+//    var cbname = 'getJSONP.'+ 'jsonpPriceCallback';
 //
 //    if(url.indexOf('?') === -1)
-//        url += '?callback=' + cbname;
+//        url += '?callback=' + cbname +'&'+cbnum;
 //    else
-//        url += '&callback=' + cbname;
+//        url += '&callback=' + cbname +'&'+cbnum;
 //
 //    var script = document.createElement('script');
 //
-//    getJSONP[cbnum] = function(response){
+//    getJSONP['jsonpPriceCallback'] = function(response){
 //        try{
 //            callback(response);
 //        }
@@ -265,42 +294,15 @@ function queue(){
 //}
 //getJSONP.counter = 0;
 
-//并发jsonp请求时，若回调函数名相同，回调函数会被覆盖掉
-function getJSONP(url,callback){
-    var cbnum = 'cb' + getJSONP.counter++;
-    var cbname = 'getJSONP.'+ 'jsonpPriceCallback';
-
-    if(url.indexOf('?') === -1)
-        url += '?callback=' + cbname +'&'+cbnum;
-    else
-        url += '&callback=' + cbname +'&'+cbnum;
-
-    var script = document.createElement('script');
-
-    getJSONP['jsonpPriceCallback'] = function(response){
-        try{
-            callback(response);
-        }
-        finally{
-            //delete getJSONP[cbnum];
-            //script.parentNode.removeChild(script);
-        }
-    };
-
-    script.src = url;
-    document.body.appendChild(script);
-}
-getJSONP.counter = 0;
-
 ///////////
 function customJSONP(){
     for(var i=0;i<10;i++){
-        getJSONP( '/jsonp_api.json',function(data){
+        getJSONP( '/jsonp_api',function(data){
             console.log(data);
         })
     }
 }
-
+//customJSONP();
 //队列
 //jQuery(document).queue('myqueue',[
 //    function(){
@@ -358,12 +360,13 @@ function jqAjaxQueue(){
             url: "/json_api?param="+i,
             dataType:'json',
             jsonpCallback:'jsonpPriceCallback'
-        }).done(function (data) {
+        })
+                .done(function (data) {
             $('body').append('jsonp done index: ' + data.param + '<br>');
         });
     }
 }
-jqAjaxQueue();
+//jqAjaxQueue();
 
 
 function cubeQueue(){
@@ -378,7 +381,30 @@ function cubeQueue(){
 //cubeQueue();
 
 
+//var promise = wait();
+//promise.done(result);
+//
+//function result() {
+//    $('body').append('done');
+//}
 
+//function wait() {
+//    var deferred = $.Deferred();
+//
+//    $.ajax({
+//        url: "/json_api?param="+i,
+//        dataType:'json',
+//        jsonpCallback:'jsonpPriceCallback'
+//    }).done(function (data) {
+//        deferred.resolve();
+//    });
+//
+//
+//
+//    return deferred.promise();
+//}
+
+//jsonpFuc();
 
 
 </script>
